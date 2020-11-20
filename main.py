@@ -1,31 +1,36 @@
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 
-def process_message(drawing, message_text, font):
+def process_message(drawing, message_text, font, max_width):
     message_text = message_text.replace('\r\n', ' ')
     message_text = message_text.replace('\n', ' ')
     message_text = message_text.replace('  ', ' ')
     number_of_lines = 1
-    w, h = drawing.textsize(message_text, font=font)
-    if w < 600:
-        return message_text, number_of_lines, w, h
+    lw, lh = drawing.textsize(message_text, font=font)
 
-    number_of_lines = 2
-    spaces = find_occurrences(message_text, ' ')
-    for i in range(len(spaces) - 1, 0, -1):
-        message_text = message_text.replace('\n', ' ')
-        msg_list = list(message_text)
-        msg_list[spaces[i]] = '\n'
-        message_text = ''.join(msg_list)
-        w, h = drawing.textsize(message_text, font=font)
-        if w < 600:
-            return message_text, number_of_lines, w, h
+    if lw > max_width:
+        message_words = message_text.split()
+        message_text = ''
+        has_more_text = True
+        while has_more_text:
+            for i in range(0 , len(message_words) - 1):
+                line = ' '.join(message_words[:i])
+                lw, lh = drawing.textsize(line, font=font)
+                if lw > max_width:
+                    # If i is zero then this will fail
+                    line = ' '.join(message_words[:i - 1])
+                    message_text += f'{line}\n'
+                    number_of_lines += 1
+                    message_words = message_words[i - 1:]
+                    line = ' '.join(message_words)
+                    lw, lh = drawing.textsize(line, font=font)
+                    if lw <= max_width:
+                        has_more_text = False
+                        message_text += f'{line}'
+                        break
 
-    return None
-
-
-def find_occurrences(s, ch):
-    return [i for i, letter in enumerate(s) if letter == ch]
+    lw, lh = drawing.textsize(message_text, font=font)
+    return message_text, number_of_lines, lw, lh
 
 
 # create an image
@@ -39,6 +44,7 @@ img.paste(png, (20, 15), png)
 temp_fnt = ImageFont.truetype('/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf', 80)
 cond_fnt = ImageFont.truetype('/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf', 28)
 cc_fnt = ImageFont.truetype('/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf', 18)
+alert_fnt = ImageFont.truetype('/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf', 70)
 
 # get a drawing context
 d = ImageDraw.Draw(img)
@@ -59,19 +65,23 @@ d.multiline_text((260, 204), 'Sunrise: 07:26:59 CST', font=cc_fnt)
 d.multiline_text((260, 226), 'Sunset: 19:26:59 CST', font=cc_fnt)
 d.multiline_text((260, 262), 'Updated at: 2020-11-17 19:26:59 CST', font=cc_fnt)
 
-# Probably need a 100 char limit here to make sure it all fits in the box
-message = "You can just push a little tree out of your brush like that. We can do a happy little picture today."
-#message = "You can just push a little tree out of your brush like that."
-msg, lines, width, height = process_message(d, message, cc_fnt)
-print(msg)
-print(lines)
-print(width)
-print(height)
-y_coord = 312
-if lines == 1:
-    y_coord = 322
-x_coord = (630 - width) / 2
-d.multiline_text((x_coord, y_coord), msg, font=cc_fnt)
+# # Probably need a 100 char limit here to make sure it all fits in the box
+# message = "You can just push a little tree out of your brush like that. We can do a happy little picture today."
+# #message = "You can just push a little tree out of your brush like that."
+# msg, lines, width, height = process_message(d, message, cc_fnt, 600)
+# print(msg)
+# print(lines)
+# print(width)
+# print(height)
+# y_coord = 312
+# if lines == 1:
+#     y_coord = 322
+# x_coord = (630 - width) / 2
+# d.multiline_text((x_coord, y_coord), msg, font=cc_fnt)
+
+d.rectangle([(4, 306), (232, 370)], fill='black')
+d.multiline_text((9, 288), 'ALERT', font=alert_fnt, fill='white')
+
 
 # draw lines
 d.line([(240, 0), (240, 300)], fill=0, width=5)
